@@ -42,13 +42,13 @@ require (
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/yaml.v2 v2.2.8
 	helm.sh/helm/v3 v3.1.2
-	k8s.io/api v0.17.4
-	k8s.io/apiextensions-apiserver v0.17.4
-	k8s.io/apimachinery v0.17.4
+	k8s.io/api v0.18.0
+	k8s.io/apiextensions-apiserver v0.18.0
+	k8s.io/apimachinery v0.18.0
 	k8s.io/cli-runtime v0.17.4
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.17.4
-	k8s.io/gengo v0.0.0-20191010091904-7fa3014cb28f
+	k8s.io/code-generator v0.18.0
+	k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
 	k8s.io/helm v2.16.3+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kube-state-metrics v1.7.2
@@ -61,3 +61,7 @@ replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
 	k8s.io/client-go => k8s.io/client-go v0.17.4 // Required by prometheus-operator
 )
+
+replace sigs.k8s.io/controller-tools => github.com/aloknnikhil/controller-tools v0.2.9-0.20200415200434-90ba2bbcac23
+
+replace k8s.io/apimachinery => github.com/kubernetes/apimachinery v0.19.0-alpha.0.0.20200303201514-6584f51ae935
