@@ -698,7 +698,7 @@ sigs.k8s.io/controller-runtime/pkg/client/apiutil.DynamicRESTMapper
 
 **Add `operator_sdk.util` Ansible collection**
 
-The Ansible module `k8s_status` was extracted and is now provided by the `operator_sdk.util` Ansible collection. See [developer_guide](https://github.com/operator-framework/operator-sdk/blob/master/doc/ansible/dev/developer_guide.md#custom-resource-status-management) for new usage.
+The Ansible module `k8s_status` was extracted and is now provided by the `operator_sdk.util` Ansible collection. See [developer_guide](/docs/ansible/development-tips/#custom-resource-status-management) for new usage.
 
 To use the collection in a role, declare it at the root level in `meta/main.yaml`:
 ```yaml
@@ -1060,7 +1060,7 @@ RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
  && chmod -R ug+rwx ${HOME}/.ansible
 ```
 
-## Unreleased (Master Branch)
+## v0.17.x
 
 **modules**
 
@@ -1068,7 +1068,7 @@ RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
 
 ```
 require (
-	github.com/operator-framework/operator-sdk master
+	github.com/operator-framework/operator-sdk v0.17.0
 	sigs.k8s.io/controller-runtime v0.5.2
 )
 

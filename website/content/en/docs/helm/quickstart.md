@@ -220,6 +220,12 @@ INFO[0000] Go OS/Arch: linux/amd64
 INFO[0000] operator-sdk Version: v0.2.0+git
 ```
 
+### 3. Deploy your Operator with the Operator Lifecycle Manager (OLM)
+
+OLM will manage creation of most if not all resources required to run your operator,
+using a bit of setup from other `operator-sdk` commands. Check out the OLM integration
+[user guide][olm-user-guide] for more information.
+
 ## Deploy the Nginx custom resource
 
 Apply the nginx CR that we modified earlier:
@@ -298,9 +304,13 @@ kubectl delete -f deploy/role.yaml
 kubectl delete -f deploy/service_account.yaml
 kubectl delete -f deploy/crds/example.com_nginxes_crd.yaml
 ```
+**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk add api --api-version=cache.example.com/v1alpha1 --kind=AppService`
+For more information, refer [cli][addcli] doc.
 
 [operator-scope]: /docs/operator-scope
 [layout-doc]: /docs/helm/reference/scaffolding
 [helm-charts]:https://helm.sh/docs/topics/charts/
 [helm-values]:https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing
 [helm-official]:https://helm.sh/docs/
+[addcli]: /docs/cli/operator-sdk_add_api
+[olm-user-guide]: /docs/olm-integration/user-guide

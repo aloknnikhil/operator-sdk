@@ -15,15 +15,13 @@
 package controller
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"sync"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
 	rpb "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,10 +31,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/yaml"
 
 	"github.com/operator-framework/operator-sdk/pkg/helm/release"
 	"github.com/operator-framework/operator-sdk/pkg/internal/predicates"
-	"github.com/operator-framework/operator-sdk/pkg/predicate"
 )
 
 var log = logf.Log.WithName("helm.controller")
@@ -80,8 +78,7 @@ func Add(mgr manager.Manager, options WatchOptions) error {
 
 	o := &unstructured.Unstructured{}
 	o.SetGroupVersionKind(options.GVK)
-	if err := c.Watch(&source.Kind{Type: o}, &crthandler.EnqueueRequestForObject{},
-		predicate.GenerationChangedPredicate{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: o}, &crthandler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -106,14 +103,10 @@ func watchDependentResources(mgr manager.Manager, r *HelmOperatorReconciler, c c
 	var m sync.RWMutex
 	watches := map[schema.GroupVersionKind]struct{}{}
 	releaseHook := func(release *rpb.Release) error {
-		dec := yaml.NewDecoder(bytes.NewBufferString(release.Manifest))
-		for {
+		resources := releaseutil.SplitManifests(release.Manifest)
+		for _, resource := range resources {
 			var u unstructured.Unstructured
-			err := dec.Decode(&u.Object)
-			if err == io.EOF {
-				return nil
-			}
-			if err != nil {
+			if err := yaml.Unmarshal([]byte(resource), &u); err != nil {
 				return err
 			}
 
@@ -165,6 +158,7 @@ func watchDependentResources(mgr manager.Manager, r *HelmOperatorReconciler, c c
 			log.Info("Watching dependent resource", "ownerApiVersion", r.GVK.GroupVersion(),
 				"ownerKind", r.GVK.Kind, "apiVersion", gvk.GroupVersion(), "kind", gvk.Kind)
 		}
+		return nil
 	}
 	r.releaseHook = releaseHook
 }

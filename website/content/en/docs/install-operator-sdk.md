@@ -1,13 +1,8 @@
 ---
-title: Install the Operator SDK CLI 
+title: Install the Operator SDK CLI
 linkTitle: Installation
-weight: 1 
+weight: 1
 ---
-{{% alert title="Warning" color="warning" %}}
-These pages are under construction. Please continue to use the [docs in
-tree](https://github.com/operator-framework/operator-sdk/tree/master/doc)
-for now.
-{{% /alert %}}
 
 - [Install from Homebrew (macOS)](#install-from-homebrew-macos)
 - [Install from GitHub release](#install-from-github-release)
@@ -27,7 +22,7 @@ $ brew install operator-sdk
 
 ```sh
 # Set the release version variable
-$ RELEASE_VERSION=v0.16.0
+$ RELEASE_VERSION=v0.17.0
 # Linux
 $ curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 # macOS

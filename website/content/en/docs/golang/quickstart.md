@@ -4,7 +4,7 @@ linkTitle: Quickstart
 weight: 2
 ---
 
-This guide walks through an example of building a simple memcached-operator using the operator-sdk CLI tool and controller-runtime library API. 
+This guide walks through an example of building a simple memcached-operator using the operator-sdk CLI tool and controller-runtime library API.
 
 ## Create a new project
 
@@ -238,7 +238,89 @@ return reconcile.Result{RequeueAfter: time.Second*5}, nil
 
 **Note:** Returning `Result` with `RequeueAfter` set is how you can periodically reconcile a CR.
 
-For a guide on Reconcilers, Clients, and interacting with resource Events, see the [Client API doc][doc_client_api].
+#### Reconcile Result Use Cases
+**The following are possible reconcile loop return options.**
+
+#### 1. With the error:
+
+If an error is encountered during processing the appropriate return option is to return an error.
+This results in the reconcile loop being re-triggered to run again.
+
+**Usage**
+```Go
+return reconcile.Result{}, err
+```
+
+**Example:**
+
+In the example below a `reconcile.Result{}, err` is used when there is an error reading the object.
+As a result the request is requeued for another try.
+```Go
+// Fetch the Memcached instance
+memcached := &cachev1alpha1.Memcached{}
+err := r.client.Get(context.TODO(), request.NamespacedName, memcached)
+if err != nil {
+  if errors.IsNotFound(err) {
+		...
+  }
+  // Error reading the object - requeue the request.
+  reqLogger.Error(err, "Failed to get Memcached")
+  return reconcile.Result{}, err
+}
+```
+
+#### 2. Without an error:
+
+There are several situations where although no error occured, the reconcile loop should signify
+during its return that it needs to run again.
+
+**Usage**
+```Go
+return reconcile.Result{Requeue: true}, nil
+```
+
+**Example:**
+
+In the example below a `reconcile.Result{Requeue: true}, nil` is used because a new resource is being created and as such there is the potential that further processing is required. Thus, the reconcile loop needs to trigger a requeue but there is no error associated with this requeue.
+As a result the request is requeued for another try.
+```Go
+// Define a new deployment
+dep := r.deploymentForMemcached(memcached)
+...
+
+// Deployment created successfully - return and requeue
+return reconcile.Result{Requeue: true}, nil
+```
+
+#### 3. Without an error and no need to requeue the request:
+
+In some situations, such as when the primary resource has been deleted, there is no need to
+requeue the request for another attempt
+
+**Usage**
+```Go
+return reconcile.Result{}, nil
+```
+
+**Example:**
+
+In the example below a `reconcile.Result{}, nil` is used because the Memcached resource was not found, and no further processing is required.  
+```Go
+// Fetch the Memcached instance
+memcached := &cachev1alpha1.Memcached{}
+err := r.client.Get(context.TODO(), request.NamespacedName, memcached)
+if err != nil {
+	if errors.IsNotFound(err) {
+		// Request object not found, could have been deleted after reconcile request.
+		// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+		// Return and don't requeue
+		reqLogger.Info("Memcached resource not found. Ignoring since object must be deleted")
+		return reconcile.Result{}, nil
+	}
+...
+```
+
+For a guide on Reconcilers, Clients, and interacting with resource Events, see the [Client API doc][doc_client_api] and the [controller-runtime documentation over reconcile][controller-runtime-reconcile-godoc].
 
 ## Build and run the operator
 
@@ -325,7 +407,9 @@ You can use a specific kubeconfig via the flag `--kubeconfig=<path/to/kubeconfig
 
 ### 3. Deploy your Operator with the Operator Lifecycle Manager (OLM)
 
-OLM will manage creation of most if not all resources required to run your operator, using a bit of setup from other `operator-sdk` commands. Check out the [docs][cli-run-olm] for more information.
+OLM will manage creation of most if not all resources required to run your operator,
+using a bit of setup from other `operator-sdk` commands. Check out the OLM integration
+[user guide][olm-user-guide] for more information.
 
 ## Create a Memcached CR
 
@@ -583,6 +667,10 @@ deleted until you remove the finalizer (ie, after your cleanup logic has success
 The following is a snippet from the controller file under `pkg/controller/memcached/memcached_controller.go`
 
 ```Go
+import (
+  ...
+  "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
 
 const memcachedFinalizer = "finalizer.cache.example.com"
 
@@ -594,14 +682,16 @@ func (r *ReconcileMemcached) Reconcile(request reconcile.Request) (reconcile.Res
 	memcached := &cachev1alpha1.Memcached{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, memcached)
 	if err != nil {
-		// If the resource is not found, that means all of
-		// the finalizers have been removed, and the memcached
-		// resource has been deleted, so there is nothing left
-		// to do.
-		if apierrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			reqLogger.Info("Memcached resource not found. Ignoring since object must be deleted.")
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, fmt.Errorf("could not fetch memcached instance: %s", err)
+		// Error reading the object - requeue the request.
+		reqLogger.Error(err, "Failed to get Memcached.")
+		return reconcile.Result{}, err
 	}
 
 	...
@@ -620,7 +710,7 @@ func (r *ReconcileMemcached) Reconcile(request reconcile.Request) (reconcile.Res
 
 			// Remove memcachedFinalizer. Once all finalizers have been
 			// removed, the object will be deleted.
-			memcached.SetFinalizers(remove(memcached.GetFinalizers(), memcachedFinalizer))
+			controllerutil.RemoveFinalizer(memcached, memcachedFinalizer)
 			err := r.client.Update(context.TODO(), memcached)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -652,7 +742,7 @@ func (r *ReconcileMemcached) finalizeMemcached(reqLogger logr.Logger, m *cachev1
 
 func (r *ReconcileMemcached) addFinalizer(reqLogger logr.Logger, m *cachev1alpha1.Memcached) error {
 	reqLogger.Info("Adding Finalizer for the Memcached")
-	m.SetFinalizers(append(m.GetFinalizers(), memcachedFinalizer))
+	controllerutil.AddFinalizer(m, memcachedFinalizer)
 
 	// Update CR
 	err := r.client.Update(context.TODO(), m)
@@ -670,15 +760,6 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func remove(list []string, s string) []string {
-	for i, v := range list {
-		if v == s {
-			list = append(list[:i], list[i+1:]...)
-		}
-	}
-	return list
 }
 ```
 
@@ -751,6 +832,7 @@ When the operator is not running in a cluster, the Manager will return an error 
 [event_filtering]:/docs/golang/references/event-filtering/
 [controller_options]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/controller#Options
 [controller_godocs]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/controller
+[controller-runtime-reconcile-godoc]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/reconcile#Reconciler
 [operator_scope]:/docs/operator-scope/
 [pod_eviction_timeout]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/#options
 [manager_options]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/manager#Options
@@ -759,7 +841,7 @@ When the operator is not running in a cluster, the Manager will return an error 
 [leader_with_lease]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/leaderelection
 [memcached_handler]: ../example/memcached-operator/handler.go.tmpl
 [memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/master/example/memcached-operator/memcached_controller.go.tmpl
-[layout_doc]:/docs/golang/project_layout/
+[layout_doc]:/docs/golang/references/project-layout/
 [homebrew_tool]:https://brew.sh/
 [go_mod_wiki]: https://github.com/golang/go/wiki/Modules
 [go_vendoring]: https://blog.gopheracademy.com/advent-2015/vendor-folder/
@@ -771,10 +853,9 @@ When the operator is not running in a cluster, the Manager will return an error 
 [controller-go-doc]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg#hdr-Controller
 [request-go-doc]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/reconcile#Request
 [result_go_doc]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/reconcile#Result
-[metrics_doc]: /docs/golang/metrics/operator-sdk-monitoring/
+[metrics_doc]: /docs/golang/monitoring/
 [multi-namespaced-cache-builder]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
 [scheme_builder]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/scheme#Builder
 [typical-status-properties]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 [godoc-conditions]: https://godoc.org/github.com/operator-framework/operator-sdk/pkg/status#Conditions
-[cli-run-olm]: /docs/golang/olm-integration/olm-cli/
-
+[olm-user-guide]: /docs/olm-integration/user-guide

@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/ansible/proxy/controllermap"
 	"github.com/operator-framework/operator-sdk/pkg/ansible/proxy/requestfactory"
 	k8sRequest "github.com/operator-framework/operator-sdk/pkg/ansible/proxy/requestfactory"
@@ -267,12 +266,14 @@ func (c *cacheResponseHandler) getListFromCache(r *requestfactory.RequestInfo, r
 			log.Error(err, "Unable to parse field selectors for the client")
 			return nil, err
 		}
-		clientListOpts = append(clientListOpts, k8sutil.MatchingFields{Sel: sel})
+		clientListOpts = append(clientListOpts, client.MatchingFieldsSelector{Selector: sel})
 	}
 	k.Kind = k.Kind + "List"
 	un := unstructured.UnstructuredList{}
 	un.SetGroupVersionKind(k)
-	err := c.informerCache.List(context.Background(), &un, clientListOpts...)
+	ctx, cancel := context.WithTimeout(context.Background(), cacheEstablishmentTimeout)
+	defer cancel()
+	err := c.informerCache.List(ctx, &un, clientListOpts...)
 	if err != nil {
 		// break here in case resource doesn't exist in cache but exists on APIserver
 		// This is very unlikely but provides user with expected 404
@@ -287,7 +288,9 @@ func (c *cacheResponseHandler) getObjectFromCache(r *requestfactory.RequestInfo,
 	un := &unstructured.Unstructured{}
 	un.SetGroupVersionKind(k)
 	obj := client.ObjectKey{Namespace: r.Namespace, Name: r.Name}
-	err := c.informerCache.Get(context.Background(), obj, un)
+	ctx, cancel := context.WithTimeout(context.Background(), cacheEstablishmentTimeout)
+	defer cancel()
+	err := c.informerCache.Get(ctx, obj, un)
 	if err != nil {
 		// break here in case resource doesn't exist in cache but exists on APIserver
 		// This is very unlikely but provides user with expected 404

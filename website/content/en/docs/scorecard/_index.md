@@ -1,32 +1,9 @@
 ---
 title: Scorecard
-weight: 20
+weight: 25
 ---
 
 # operator-sdk scorecard
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-<!-- **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)* -->
-
-- [Overview](#overview)
-- [Requirements](#requirements)
-- [Running the Scorecard](#running-the-scorecard)
-- [Configuration](#configuration)
-  - [Config File](#config-file)
-  - [Command Args](#command-args)
-  - [Config File Options](#config-file-options)
-  - [Plugins](#plugins)
-    - [Basic and OLM](#basic-and-olm)
-- [Tests Performed](#tests-performed)
-  - [Basic Operator](#basic-operator)
-  - [OLM Integration](#olm-integration)
-- [Exit Status](#exit-status)
-- [Extending the Scorecard with Plugins](#extending-the-scorecard-with-plugins)
-  - [JSON format](#json-format)
-- [Running the scorecard with an OLM-managed operator](#running-the-scorecard-with-an-olm-managed-operator)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Overview
 
